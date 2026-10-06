@@ -7,7 +7,7 @@ import dev.fantasma.votingsystem.exceptions.VotingSystemException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-public interface VotingService {
+public interface PollService {
     PollResponse createPoll(CreatePollRequest request) throws VotingSystemException;
     Page<PollResponse> getAllPolls(Pageable pageable);
     Page<PollResponse> getPollsByStatus(Status status, Pageable pageable);

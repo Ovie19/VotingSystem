@@ -41,13 +41,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class VotingServiceTest {
+class PollServiceTest {
 
     @Mock
     private PollRepository pollRepository;
 
     @InjectMocks
-    private VotingServiceImpl votingService;
+    private PollServiceImpl votingService;
 
     private CreatePollRequest request;
 
