@@ -33,7 +33,7 @@ public class Poll {
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
-    private Instant createdAt;
+    private Instant createdAt = Instant.now();
 
     private Instant startAt;
 
