@@ -8,4 +8,5 @@ import java.util.UUID;
 
 @Repository
 public interface VoteRepository extends JpaRepository<Vote, UUID> {
+    boolean existsByUserIdAndPollId(UUID userId, UUID pollId);
 }

@@ -7,7 +7,6 @@ import dev.fantasma.votingsystem.dtos.requests.LoginRequest;
 import dev.fantasma.votingsystem.dtos.responses.LoginResponse;
 import dev.fantasma.votingsystem.dtos.responses.UserResponse;
 import dev.fantasma.votingsystem.exceptions.InvalidRequestException;
-import dev.fantasma.votingsystem.exceptions.UserNotFoundException;
 import dev.fantasma.votingsystem.exceptions.VotingSystemException;
 import lombok.AllArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
