@@ -16,6 +16,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 import static dev.fantasma.votingsystem.data.models.Status.*;
 import static dev.fantasma.votingsystem.utils.Mapper.map;
@@ -59,5 +61,32 @@ public class PollServiceImpl implements PollService {
     public Page<PollResponse> getPollsByStatus(Status status, Pageable pageable) {
         return pollRepository.findAllByStatusOrderByCreatedAtDesc(status, pageable)
                 .map(Mapper::map);
+    }
+
+    @Override
+    public List<UUID> getScheduledPollIdsBefore(Instant startAt) {
+        return pollRepository.findIdsByStartAtBeforeAndStatus(startAt, SCHEDULED);
+    }
+
+    @Override
+    public void startPoll(UUID pollId) {
+        updatePollStatus(ACTIVE, pollId);
+    }
+
+    @Override
+    public List<UUID> getActivePollIdsBefore(Instant startAt) {
+        return pollRepository.findIdsByEndAtBeforeAndStatus(startAt, ACTIVE);
+    }
+
+    @Override
+    public void endPoll(UUID pollId) {
+        updatePollStatus(COMPLETED, pollId);
+    }
+
+    private void updatePollStatus(Status status, UUID id) {
+        Poll poll = pollRepository.findById(id)
+                .orElseThrow();
+        poll.setStatus(status);
+        pollRepository.save(poll);
     }
 }
