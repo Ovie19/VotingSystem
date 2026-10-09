@@ -4,9 +4,15 @@ import dev.fantasma.votingsystem.data.models.Poll;
 import dev.fantasma.votingsystem.data.models.PollOption;
 import dev.fantasma.votingsystem.data.models.Status;
 import dev.fantasma.votingsystem.data.repositories.PollRepository;
+import dev.fantasma.votingsystem.data.repositories.VoteRepository;
 import dev.fantasma.votingsystem.dtos.requests.CreatePollOptionRequest;
 import dev.fantasma.votingsystem.dtos.requests.CreatePollRequest;
+import dev.fantasma.votingsystem.dtos.responses.ClosePollResponse;
+import dev.fantasma.votingsystem.dtos.responses.OptionVoteCount;
+import dev.fantasma.votingsystem.dtos.responses.PollOptionResultResponse;
 import dev.fantasma.votingsystem.dtos.responses.PollResponse;
+import dev.fantasma.votingsystem.exceptions.InvalidPollStateException;
+import dev.fantasma.votingsystem.exceptions.ResourceNotFoundException;
 import dev.fantasma.votingsystem.exceptions.VotingSystemException;
 import dev.fantasma.votingsystem.utils.Mapper;
 import lombok.AllArgsConstructor;
@@ -14,10 +20,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static dev.fantasma.votingsystem.data.models.Status.*;
 import static dev.fantasma.votingsystem.utils.Mapper.map;
@@ -28,16 +37,18 @@ import static dev.fantasma.votingsystem.utils.Validator.validate;
 public class PollServiceImpl implements PollService {
 
     private final PollRepository pollRepository;
+    private final VoteRepository voteRepository;
 
     @PreAuthorize("hasRole('ADMIN')")
     @Override
+    @Transactional
     public PollResponse createPoll(CreatePollRequest request) throws VotingSystemException {
         validate(request);
         Poll poll = map(request);
 
         if (request.getStartAt() == null) poll.setStartAt(Instant.now());
 
-        boolean isActive = request.getStartAt() == null || request.getStartAt().isBefore(Instant.now());
+        boolean isActive = !poll.getStartAt().isAfter(Instant.now());
         Status status = isActive ? ACTIVE : SCHEDULED;
         poll.setStatus(status);
 
@@ -69,24 +80,66 @@ public class PollServiceImpl implements PollService {
     }
 
     @Override
-    public void startPoll(UUID pollId) {
-        updatePollStatus(ACTIVE, pollId);
+    @Transactional
+    public void startPoll(UUID pollId) throws VotingSystemException {
+        updatePollStatus(SCHEDULED, ACTIVE, pollId);
     }
 
     @Override
-    public List<UUID> getActivePollIdsBefore(Instant startAt) {
-        return pollRepository.findIdsByEndAtBeforeAndStatus(startAt, ACTIVE);
+    public List<UUID> getActivePollIdsBefore(Instant endAt) {
+        return pollRepository.findIdsByEndAtBeforeAndStatus(endAt, ACTIVE);
     }
 
     @Override
-    public void endPoll(UUID pollId) {
-        updatePollStatus(COMPLETED, pollId);
+    @Transactional
+    public void endPoll(UUID pollId) throws VotingSystemException {
+        updatePollStatus(ACTIVE, COMPLETED, pollId);
     }
 
-    private void updatePollStatus(Status status, UUID id) {
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ClosePollResponse closePoll(UUID pollId) throws VotingSystemException {
+        Poll poll = pollRepository.findById(pollId)
+                .orElseThrow(() -> new ResourceNotFoundException("Poll not found"));
+        poll.getStatus().validatePollState();
+        poll.setEndAt(Instant.now());
+        poll.setStatus(COMPLETED);
+
+        Map<UUID, Long> votesByOption = voteRepository.countVotesByOption(pollId).stream()
+                .collect(Collectors.toMap(OptionVoteCount::getOptionId, OptionVoteCount::getVotes));
+
+        List<PollOptionResultResponse> options = poll.getOptions().stream()
+                .map(o -> new PollOptionResultResponse(
+                        o.getId(),
+                        o.getLabel(),
+                        votesByOption.getOrDefault(o.getId(), 0L))
+                ).toList();
+
+        long totalVotes = options.stream()
+                .mapToLong(PollOptionResultResponse::getVotes)
+                .sum();
+
+        return new ClosePollResponse(
+                poll.getId(),
+                poll.getTitle(),
+                poll.getStatus(),
+                poll.getStartAt(),
+                poll.getEndAt(),
+                totalVotes,
+                options);
+    }
+
+    private void updatePollStatus(Status expectedCurrentStatus, Status newStatus, UUID id) throws VotingSystemException {
         Poll poll = pollRepository.findById(id)
-                .orElseThrow();
-        poll.setStatus(status);
+                .orElseThrow(() -> new ResourceNotFoundException("Poll not found"));
+
+        if (poll.getStatus() != expectedCurrentStatus) {
+            throw new InvalidPollStateException(
+                    "Cannot change poll " + id + " from " + poll.getStatus() + " to " + newStatus);
+        }
+
+        poll.setStatus(newStatus);
         pollRepository.save(poll);
     }
 }

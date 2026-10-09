@@ -2,6 +2,7 @@ package dev.fantasma.votingsystem.services;
 
 import dev.fantasma.votingsystem.data.models.Status;
 import dev.fantasma.votingsystem.dtos.requests.CreatePollRequest;
+import dev.fantasma.votingsystem.dtos.responses.ClosePollResponse;
 import dev.fantasma.votingsystem.dtos.responses.PollResponse;
 import dev.fantasma.votingsystem.exceptions.VotingSystemException;
 import org.springframework.data.domain.Page;
@@ -16,7 +17,8 @@ public interface PollService {
     Page<PollResponse> getAllPolls(Pageable pageable);
     Page<PollResponse> getPollsByStatus(Status status, Pageable pageable);
     List<UUID> getScheduledPollIdsBefore(Instant startAt);
-    void startPoll(UUID pollId);
-    List<UUID> getActivePollIdsBefore(Instant startAt);
-    void endPoll(UUID pollId);
+    void startPoll(UUID pollId) throws VotingSystemException;
+    List<UUID> getActivePollIdsBefore(Instant endAt);
+    void endPoll(UUID pollId) throws VotingSystemException;
+    ClosePollResponse closePoll(UUID pollId) throws VotingSystemException;
 }
