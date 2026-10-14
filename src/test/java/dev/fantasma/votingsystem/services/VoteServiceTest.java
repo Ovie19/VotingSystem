@@ -39,8 +39,8 @@ class VoteServiceTest {
     private PollRepository pollRepository;
     @Mock
     private PollOptionRepository pollOptionRepository;
-//    @Mock
-//    private EntityManager entityManager;
+    @Mock
+    private EntityManager entityManager;
     @InjectMocks
     private VotingServiceImpl votingService;
 
