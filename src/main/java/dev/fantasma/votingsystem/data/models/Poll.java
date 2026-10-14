@@ -31,6 +31,9 @@ public class Poll {
     @Enumerated(EnumType.STRING)
     private Status status;
 
+    @Column(nullable = false)
+    private boolean deleted = false;
+
     @OneToMany(mappedBy = "poll", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PollOption> options = new ArrayList<>();
 
