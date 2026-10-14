@@ -95,4 +95,11 @@ public class Mapper {
         response.setOptions(options);
         return response;
     }
+
+    public static void map(CancelPollResponse response, Poll poll) {
+        response.setPollId(poll.getId());
+        response.setCancelledAt(poll.getEndAt());
+        response.setStatus(poll.getStatus());
+        response.setTitle(poll.getTitle());
+    }
 }

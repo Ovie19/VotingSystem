@@ -7,10 +7,7 @@ import dev.fantasma.votingsystem.data.repositories.PollRepository;
 import dev.fantasma.votingsystem.data.repositories.VoteRepository;
 import dev.fantasma.votingsystem.dtos.requests.CreatePollOptionRequest;
 import dev.fantasma.votingsystem.dtos.requests.CreatePollRequest;
-import dev.fantasma.votingsystem.dtos.responses.ClosePollResponse;
-import dev.fantasma.votingsystem.dtos.responses.OptionVoteCount;
-import dev.fantasma.votingsystem.dtos.responses.PollOptionResultResponse;
-import dev.fantasma.votingsystem.dtos.responses.PollResponse;
+import dev.fantasma.votingsystem.dtos.responses.*;
 import dev.fantasma.votingsystem.exceptions.InvalidPollStateException;
 import dev.fantasma.votingsystem.exceptions.ResourceNotFoundException;
 import dev.fantasma.votingsystem.exceptions.VotingSystemException;
@@ -119,6 +116,21 @@ public class PollServiceImpl implements PollService {
         return map(poll, options, totalVotes);
     }
 
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public CancelPollResponse cancelPoll(UUID pollId) throws VotingSystemException {
+        Poll poll = pollRepository.findById(pollId)
+                .orElseThrow(() -> new ResourceNotFoundException("Poll not found"));
+        poll.getStatus().validateCancelPollState();
+        poll.setStatus(CANCELED);
+        poll.setEndAt(Instant.now());
+
+        CancelPollResponse response = new CancelPollResponse();
+        map(response, poll);
+        return response;
+    }
+
     private void updatePollStatus(Status expectedCurrentStatus, Status newStatus, UUID id) throws VotingSystemException {
         Poll poll = pollRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Poll not found"));
@@ -127,8 +139,6 @@ public class PollServiceImpl implements PollService {
             throw new InvalidPollStateException(
                     "Cannot change poll " + id + " from " + poll.getStatus() + " to " + newStatus);
         }
-
         poll.setStatus(newStatus);
-        pollRepository.save(poll);
     }
 }

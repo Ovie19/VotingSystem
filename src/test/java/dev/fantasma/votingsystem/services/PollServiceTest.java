@@ -5,6 +5,7 @@ import dev.fantasma.votingsystem.data.models.Status;
 import dev.fantasma.votingsystem.data.repositories.PollRepository;
 import dev.fantasma.votingsystem.dtos.requests.CreatePollOptionRequest;
 import dev.fantasma.votingsystem.dtos.requests.CreatePollRequest;
+import dev.fantasma.votingsystem.dtos.responses.CancelPollResponse;
 import dev.fantasma.votingsystem.dtos.responses.PollResponse;
 import dev.fantasma.votingsystem.exceptions.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,7 @@ import org.junit.jupiter.params.provider.*;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -28,6 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static dev.fantasma.votingsystem.data.models.Status.ACTIVE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
@@ -148,7 +151,7 @@ class PollServiceTest {
         assertNotNull(response);
         assertNotNull(response.getId());
         assertEquals(3, response.getOptions().size());
-        assertEquals(Status.ACTIVE, response.getStatus());
+        assertEquals(ACTIVE, response.getStatus());
         assertTrue(response.getStartAt().isBefore(Instant.now()));
     }
 
@@ -222,8 +225,54 @@ class PollServiceTest {
         assertEquals(expectedMessage, ex.getMessage());
     }
 
-//    @Test
-//    void closePoll_
+    @Test
+    void cancelPoll_invalidPollIdThrowsException() {
+        UUID invalidPollId = UUID.randomUUID();
+        when(pollRepository.findById(invalidPollId)).thenReturn(Optional.empty());
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> pollService.cancelPoll(invalidPollId)
+        );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "COMPLETED",
+            "CANCELED"
+    })
+    void cancelPoll_whenStatusNotActiveOrScheduled_throwsException(Status status) {
+        Poll poll = new Poll();
+        poll.setId(UUID.randomUUID());
+        poll.setStatus(status);
+
+        when(pollRepository.findById(poll.getId())).thenReturn(Optional.of(poll));
+        InvalidPollStateException ex = assertThrows(InvalidPollStateException.class,
+                () -> pollService.cancelPoll(poll.getId()));
+        assertEquals("Only scheduled or active polls can be cancelled", ex.getMessage());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "ACTIVE",
+            "SCHEDULED"
+    })
+    void shouldCancelActiveOrScheduledPoll(Status status) throws VotingSystemException {
+        UUID pollId = UUID.randomUUID();
+
+        Poll poll = new Poll();
+        poll.setId(pollId);
+        poll.setTitle("Favorite programming language");
+        poll.setStatus(status);
+
+        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        CancelPollResponse response = pollService.cancelPoll(pollId);
+
+        assertEquals(pollId, response.getPollId());
+        assertEquals(Status.CANCELED, response.getStatus());
+        assertNotNull(response.getCancelledAt());
+        assertEquals("Favorite programming language", response.getTitle());
+        verify(pollRepository).findById(pollId);
+    }
 
     private static Stream<Instant> invalidInstant() {
         return Stream.of(

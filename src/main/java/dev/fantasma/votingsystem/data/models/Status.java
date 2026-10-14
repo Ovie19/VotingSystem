@@ -17,4 +17,12 @@ public enum Status {
             case CANCELED  -> throw new InvalidPollStateException("This poll has been canceled");
         }
     }
+
+    public void validateCancelPollState()  throws VotingSystemException {
+        if (this != SCHEDULED && this != ACTIVE) {
+            throw new InvalidPollStateException(
+                    "Only scheduled or active polls can be cancelled"
+            );
+        }
+    }
 }

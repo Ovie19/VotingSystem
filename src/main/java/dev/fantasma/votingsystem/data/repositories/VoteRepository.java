@@ -14,14 +14,6 @@ import java.util.UUID;
 public interface VoteRepository extends JpaRepository<Vote, UUID> {
     boolean existsByUserIdAndPollId(UUID userId, UUID pollId);
 
-//    @Query("""
-//        select v.option.id as optionId, count(v) as votes
-//        from Vote v
-//        where v.poll.id = :pollId
-//        group by v.option.id
-//        """)
-//    List<OptionVoteCount> countVotesByOption(@Param("pollId") UUID pollId);
-
     @Query("""
     SELECT o.id AS optionId,
            o.label AS label,
