@@ -4,5 +4,6 @@ import java.util.UUID;
 
 public interface OptionVoteCount {
     UUID getOptionId();
+    String getLabel();
     long getVotes();
 }

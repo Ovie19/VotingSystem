@@ -6,7 +6,6 @@ import lombok.Data;
 import java.util.UUID;
 
 @Data
-@AllArgsConstructor
 public class PollOptionResultResponse {
     private UUID id;
     private String label;

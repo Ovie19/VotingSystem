@@ -5,6 +5,8 @@ import dev.fantasma.votingsystem.dtos.requests.CreatePollRequest;
 import dev.fantasma.votingsystem.dtos.requests.CreateUserRequest;
 import dev.fantasma.votingsystem.dtos.responses.*;
 
+import java.util.List;
+
 public class Mapper {
 
     public static User map(CreateUserRequest request) {
@@ -71,6 +73,26 @@ public class Mapper {
         response.setPollId(vote.getPoll().getId());
         response.setVotedAt(vote.getCreatedAt());
         response.setVoteId(vote.getId());
+        return response;
+    }
+
+    public static PollOptionResultResponse map(OptionVoteCount vote) {
+        PollOptionResultResponse response = new PollOptionResultResponse();
+        response.setLabel(vote.getLabel());
+        response.setId(vote.getOptionId());
+        response.setVotes(vote.getVotes());
+        return response;
+    }
+
+    public static ClosePollResponse map(Poll poll, List<PollOptionResultResponse> options, long totalVotes) {
+        ClosePollResponse response = new ClosePollResponse();
+        response.setId(poll.getId());
+        response.setTitle(poll.getTitle());
+        response.setStartAt(poll.getStartAt());
+        response.setEndAt(poll.getEndAt());
+        response.setStatus(poll.getStatus());
+        response.setTotalVotes(totalVotes);
+        response.setOptions(options);
         return response;
     }
 }

@@ -41,7 +41,6 @@ public class VotingSystemApplication implements CommandLineRunner {
     public void run(String @NonNull ... args) throws Exception {
         if (!userRepository.existsByEmail(email)) {
             Set<Role> roles = new HashSet<>(Set.of(Role.ROLE_ADMIN));
-            System.out.println("Performing Seeding");
             User user = new User();
             user.setName(name);
             user.setEmail(email);

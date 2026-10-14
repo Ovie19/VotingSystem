@@ -106,28 +106,17 @@ public class PollServiceImpl implements PollService {
         poll.setEndAt(Instant.now());
         poll.setStatus(COMPLETED);
 
-        Map<UUID, Long> votesByOption = voteRepository.countVotesByOption(pollId).stream()
-                .collect(Collectors.toMap(OptionVoteCount::getOptionId, OptionVoteCount::getVotes));
-
-        List<PollOptionResultResponse> options = poll.getOptions().stream()
-                .map(o -> new PollOptionResultResponse(
-                        o.getId(),
-                        o.getLabel(),
-                        votesByOption.getOrDefault(o.getId(), 0L))
-                ).toList();
+        List<PollOptionResultResponse> options =
+                voteRepository.countVotesByOption(pollId)
+                        .stream()
+                        .map(Mapper::map)
+                        .toList();
 
         long totalVotes = options.stream()
                 .mapToLong(PollOptionResultResponse::getVotes)
                 .sum();
 
-        return new ClosePollResponse(
-                poll.getId(),
-                poll.getTitle(),
-                poll.getStatus(),
-                poll.getStartAt(),
-                poll.getEndAt(),
-                totalVotes,
-                options);
+        return map(poll, options, totalVotes);
     }
 
     private void updatePollStatus(Status expectedCurrentStatus, Status newStatus, UUID id) throws VotingSystemException {
