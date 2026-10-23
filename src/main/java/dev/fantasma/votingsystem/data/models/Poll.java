@@ -16,7 +16,10 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "poll")
+@Table(name = "poll", indexes = {
+        @Index(name = "idx_poll_status_end_at", columnList = "status, end_at"),
+        @Index(name = "idx_poll_status_start_at", columnList = "status, start_at")
+})
 public class Poll {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

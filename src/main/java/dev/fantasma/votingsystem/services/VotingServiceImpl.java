@@ -1,63 +1,49 @@
 package dev.fantasma.votingsystem.services;
 
-import dev.fantasma.votingsystem.data.models.Poll;
-import dev.fantasma.votingsystem.data.models.PollOption;
-import dev.fantasma.votingsystem.data.models.Status;
+import dev.fantasma.votingsystem.data.models.*;
+import dev.fantasma.votingsystem.data.repositories.PollOptionRepository;
 import dev.fantasma.votingsystem.data.repositories.PollRepository;
-import dev.fantasma.votingsystem.dtos.requests.CreatePollOptionRequest;
-import dev.fantasma.votingsystem.dtos.requests.CreatePollRequest;
-import dev.fantasma.votingsystem.dtos.responses.PollResponse;
+import dev.fantasma.votingsystem.data.repositories.VoteRepository;
+import dev.fantasma.votingsystem.dtos.responses.VoteResponse;
+import dev.fantasma.votingsystem.exceptions.AlreadyVotedException;
+import dev.fantasma.votingsystem.exceptions.ResourceNotFoundException;
 import dev.fantasma.votingsystem.exceptions.VotingSystemException;
-import dev.fantasma.votingsystem.utils.Mapper;
+import jakarta.persistence.EntityManager;
 import lombok.AllArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+import java.util.UUID;
 
-import static dev.fantasma.votingsystem.data.models.Status.*;
 import static dev.fantasma.votingsystem.utils.Mapper.map;
-import static dev.fantasma.votingsystem.utils.Validator.validate;
 
 @Service
 @AllArgsConstructor
-public class VotingServiceImpl implements VotingService {
+public class VotingServiceImpl implements VoteService {
 
+    private final VoteRepository voteRepository;
     private final PollRepository pollRepository;
+    private final PollOptionRepository pollOptionRepository;
+    private final EntityManager entityManager;
 
-    @PreAuthorize("hasRole('ADMIN')")
     @Override
-    public PollResponse createPoll(CreatePollRequest request) throws VotingSystemException {
-        validate(request);
-        Poll poll = map(request);
+    public VoteResponse castVote(UUID pollId, UUID pollOptionId, UUID userId) throws VotingSystemException {
+        Poll poll = pollRepository.findById(pollId)
+                .orElseThrow(() -> new ResourceNotFoundException("Poll not found"));
+        poll.getStatus().validatePollState();
 
-        if (request.getStartAt() == null) poll.setStartAt(Instant.now());
+        PollOption pollOption = pollOptionRepository.findByIdAndPoll(pollOptionId, poll)
+                .orElseThrow(() -> new ResourceNotFoundException("Poll option not found"));
+        boolean hasVotedAlready = voteRepository.existsByUserIdAndPollId(userId, pollId);
+        if (hasVotedAlready) throw new AlreadyVotedException("You have already voted");
 
-        boolean isActive = request.getStartAt() == null || request.getStartAt().isBefore(Instant.now());
-        Status status = isActive ? ACTIVE : SCHEDULED;
-        poll.setStatus(status);
-
-        for (CreatePollOptionRequest optionRequest : request.getOptions()) {
-            PollOption pollOption = new PollOption();
-            pollOption.setLabel(optionRequest.getLabel().strip().toLowerCase());
-            pollOption.setPoll(poll);
-            poll.getOptions().add(pollOption);
+        User user = entityManager.find(User.class, userId);
+        Vote vote = map(user, poll, pollOption);
+        try {
+            vote = voteRepository.saveAndFlush(vote);
+        } catch (DataIntegrityViolationException e) {
+            throw new AlreadyVotedException("You have already voted");
         }
-
-        return map(pollRepository.save(poll));
-    }
-
-    @Override
-    public Page<PollResponse> getAllPolls(Pageable pageable) {
-        return pollRepository.findAllByOrderByCreatedAtDesc(pageable)
-                .map(Mapper::map);
-    }
-
-    @Override
-    public Page<PollResponse> getPollsByStatus(Status status, Pageable pageable) {
-        return pollRepository.findAllByStatusOrderByCreatedAtDesc(status, pageable)
-                .map(Mapper::map);
+        return map(vote);
     }
 }

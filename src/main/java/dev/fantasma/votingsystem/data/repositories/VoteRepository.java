@@ -1,11 +1,29 @@
 package dev.fantasma.votingsystem.data.repositories;
 
 import dev.fantasma.votingsystem.data.models.Vote;
+import dev.fantasma.votingsystem.dtos.responses.OptionVoteCount;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface VoteRepository extends JpaRepository<Vote, UUID> {
+    boolean existsByUserIdAndPollId(UUID userId, UUID pollId);
+
+    @Query("""
+    SELECT o.id AS optionId,
+           o.label AS label,
+           COUNT(v) AS votes
+    FROM PollOption o
+    LEFT JOIN Vote v ON v.option.id = o.id
+    WHERE o.poll.id = :pollId
+    GROUP BY o.id, o.label
+    """)
+    List<OptionVoteCount> countVotesByOption(
+            @Param("pollId") UUID pollId
+    );
 }
