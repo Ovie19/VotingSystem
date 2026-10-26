@@ -42,7 +42,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public LoginResponse login(LoginRequest request) throws VotingSystemException {
         validate(request);
         Authentication authentication = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            new UsernamePasswordAuthenticationToken(
+                    request.getEmail().toLowerCase(), request.getPassword())
         );
 
         if (!(authentication.getPrincipal() instanceof User user)) {
