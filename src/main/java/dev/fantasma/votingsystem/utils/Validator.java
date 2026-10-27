@@ -5,6 +5,7 @@ import dev.fantasma.votingsystem.dtos.requests.CreatePollRequest;
 import dev.fantasma.votingsystem.dtos.requests.CreateUserRequest;
 import dev.fantasma.votingsystem.dtos.requests.LoginRequest;
 import dev.fantasma.votingsystem.exceptions.InvalidPollScheduleException;
+import dev.fantasma.votingsystem.exceptions.InvalidPollStateException;
 import dev.fantasma.votingsystem.exceptions.InvalidRequestException;
 import dev.fantasma.votingsystem.exceptions.VotingSystemException;
 import jakarta.validation.Valid;
@@ -51,6 +52,11 @@ public class Validator {
         validateStartAt(request.getStartAt());
         validateEndAt(request.getStartAt(), request.getEndAt());
         validateOption(request.getOptions());
+    }
+
+    public static void validatePollEndAt(Instant endAt) throws VotingSystemException {
+        if (endAt == null) return;
+        if (endAt.isBefore(Instant.now())) throw new InvalidPollStateException("Poll has already ended");
     }
 
     private static void validateOption(List<CreatePollOptionRequest> options) throws VotingSystemException {

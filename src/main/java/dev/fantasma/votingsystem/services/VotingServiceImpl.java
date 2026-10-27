@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 
 import static dev.fantasma.votingsystem.utils.Mapper.map;
+import static dev.fantasma.votingsystem.utils.Validator.validatePollEndAt;
 
 @Service
 @AllArgsConstructor
@@ -36,6 +37,8 @@ public class VotingServiceImpl implements VoteService {
                 .orElseThrow(() -> new ResourceNotFoundException("Poll option not found"));
         boolean hasVotedAlready = voteRepository.existsByUserIdAndPollId(userId, pollId);
         if (hasVotedAlready) throw new AlreadyVotedException("You have already voted");
+
+        validatePollEndAt(poll.getEndAt());
 
         User user = entityManager.find(User.class, userId);
         Vote vote = map(user, poll, pollOption);

@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -171,6 +172,23 @@ class VoteServiceTest {
         verify(pollOptionRepository).findByIdAndPoll(pollOptionId, poll);
         verify(voteRepository).existsByUserIdAndPollId(userId, pollId);
         verify(voteRepository).saveAndFlush(any(Vote.class));
+    }
+
+    @Test
+    void pollStatusIsActive_castVoteWhenEndTimeHasElapsedThrowsException() {
+        Poll poll = buildPoll(Status.ACTIVE);
+        poll.setEndAt(Instant.now().minusMillis(10000));
+
+        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        when(pollOptionRepository.findByIdAndPoll(pollOptionId, poll))
+                .thenReturn(Optional.of(new PollOption()));
+        when(voteRepository.existsByUserIdAndPollId(userId, pollId)).thenReturn(false);
+
+        InvalidPollStateException exception = assertThrows(
+                InvalidPollStateException.class,
+                () -> votingService.castVote(pollId, pollOptionId, userId)
+        );
+        assertEquals("Poll has already ended", exception.getMessage());
     }
 
     @Test
