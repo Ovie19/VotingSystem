@@ -21,9 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static dev.fantasma.votingsystem.data.models.Status.*;
 import static dev.fantasma.votingsystem.utils.Mapper.map;
@@ -43,9 +41,10 @@ public class PollServiceImpl implements PollService {
         validate(request);
         Poll poll = map(request);
 
-        if (request.getStartAt() == null) poll.setStartAt(Instant.now());
+        Instant now = Instant.now();
+        if (request.getStartAt() == null) poll.setStartAt(now);
 
-        boolean isActive = !poll.getStartAt().isAfter(Instant.now());
+        boolean isActive = !poll.getStartAt().isAfter(now);
         Status status = isActive ? ACTIVE : SCHEDULED;
         poll.setStatus(status);
 
@@ -129,6 +128,11 @@ public class PollServiceImpl implements PollService {
         CancelPollResponse response = new CancelPollResponse();
         map(response, poll);
         return response;
+    }
+
+    @Override
+    public DeletePollResponse deletePoll(UUID pollId) throws VotingSystemException {
+        return null;
     }
 
     private void updatePollStatus(Status expectedCurrentStatus, Status newStatus, UUID id) throws VotingSystemException {

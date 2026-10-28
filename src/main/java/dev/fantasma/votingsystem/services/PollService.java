@@ -4,6 +4,7 @@ import dev.fantasma.votingsystem.data.models.Status;
 import dev.fantasma.votingsystem.dtos.requests.CreatePollRequest;
 import dev.fantasma.votingsystem.dtos.responses.CancelPollResponse;
 import dev.fantasma.votingsystem.dtos.responses.ClosePollResponse;
+import dev.fantasma.votingsystem.dtos.responses.DeletePollResponse;
 import dev.fantasma.votingsystem.dtos.responses.PollResponse;
 import dev.fantasma.votingsystem.exceptions.VotingSystemException;
 import org.springframework.data.domain.Page;
@@ -23,4 +24,5 @@ public interface PollService {
     void endPoll(UUID pollId) throws VotingSystemException;
     ClosePollResponse closePoll(UUID pollId) throws VotingSystemException;
     CancelPollResponse cancelPoll(UUID pollId) throws VotingSystemException;
+    DeletePollResponse deletePoll(UUID pollId) throws VotingSystemException;
 }
