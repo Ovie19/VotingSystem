@@ -12,6 +12,7 @@ import jakarta.persistence.EntityManager;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -28,8 +29,9 @@ public class VotingServiceImpl implements VoteService {
     private final EntityManager entityManager;
 
     @Override
+    @Transactional
     public VoteResponse castVote(UUID pollId, UUID pollOptionId, UUID userId) throws VotingSystemException {
-        Poll poll = pollRepository.findById(pollId)
+        Poll poll = pollRepository.findByIdForShare(pollId)
                 .orElseThrow(() -> new ResourceNotFoundException("Poll not found"));
         poll.getStatus().validatePollState();
 
@@ -37,10 +39,11 @@ public class VotingServiceImpl implements VoteService {
                 .orElseThrow(() -> new ResourceNotFoundException("Poll option not found"));
         boolean hasVotedAlready = voteRepository.existsByUserIdAndPollId(userId, pollId);
         if (hasVotedAlready) throw new AlreadyVotedException("You have already voted");
-
         validatePollEndAt(poll.getEndAt());
 
         User user = entityManager.find(User.class, userId);
+        if (user == null) throw new ResourceNotFoundException("User not found");
+
         Vote vote = map(user, poll, pollOption);
         try {
             vote = voteRepository.saveAndFlush(vote);

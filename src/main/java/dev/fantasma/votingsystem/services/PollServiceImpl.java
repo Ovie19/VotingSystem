@@ -59,18 +59,21 @@ public class PollServiceImpl implements PollService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<PollResponse> getAllPolls(Pageable pageable) {
         return pollRepository.findAllByOrderByCreatedAtDesc(pageable)
                 .map(Mapper::map);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<PollResponse> getPollsByStatus(Status status, Pageable pageable) {
         return pollRepository.findAllByStatusOrderByCreatedAtDesc(status, pageable)
                 .map(Mapper::map);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UUID> getScheduledPollIdsBefore(Instant startAt) {
         return pollRepository.findIdsByStartAtBeforeAndStatus(startAt, SCHEDULED);
     }
@@ -82,6 +85,7 @@ public class PollServiceImpl implements PollService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UUID> getActivePollIdsBefore(Instant endAt) {
         return pollRepository.findIdsByEndAtBeforeAndStatus(endAt, ACTIVE);
     }
@@ -96,7 +100,7 @@ public class PollServiceImpl implements PollService {
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ClosePollResponse closePoll(UUID pollId) throws VotingSystemException {
-        Poll poll = pollRepository.findById(pollId)
+        Poll poll = pollRepository.findByIdForUpdate(pollId)
                 .orElseThrow(() -> new ResourceNotFoundException("Poll not found"));
         poll.getStatus().validatePollState();
         poll.setEndAt(Instant.now());
@@ -119,7 +123,7 @@ public class PollServiceImpl implements PollService {
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public CancelPollResponse cancelPoll(UUID pollId) throws VotingSystemException {
-        Poll poll = pollRepository.findById(pollId)
+        Poll poll = pollRepository.findByIdForUpdate(pollId)
                 .orElseThrow(() -> new ResourceNotFoundException("Poll not found"));
         poll.getStatus().validateCancelPollState();
         poll.setStatus(CANCELED);
@@ -132,11 +136,11 @@ public class PollServiceImpl implements PollService {
 
     @Override
     public DeletePollResponse deletePoll(UUID pollId) throws VotingSystemException {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     private void updatePollStatus(Status expectedCurrentStatus, Status newStatus, UUID id) throws VotingSystemException {
-        Poll poll = pollRepository.findById(id)
+        Poll poll = pollRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Poll not found"));
 
         if (poll.getStatus() != expectedCurrentStatus) {

@@ -200,7 +200,7 @@ class PollServiceTest {
     @Test
     void invalidPollId_closePollThrowsExceptionTest() {
         UUID invalidPollId = UUID.randomUUID();
-        when(pollRepository.findById(invalidPollId)).thenReturn(Optional.empty());
+        when(pollRepository.findByIdForUpdate(invalidPollId)).thenReturn(Optional.empty());
         assertThrows(
                 ResourceNotFoundException.class,
                 () -> pollService.endPoll(invalidPollId)
@@ -218,7 +218,7 @@ class PollServiceTest {
         poll.setId(UUID.randomUUID());
         poll.setStatus(status);
 
-        when(pollRepository.findById(poll.getId())).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForUpdate(poll.getId())).thenReturn(Optional.of(poll));
         InvalidPollStateException ex = assertThrows(InvalidPollStateException.class,
                 () -> pollService.closePoll(poll.getId()));
 
@@ -228,7 +228,7 @@ class PollServiceTest {
     @Test
     void cancelPoll_invalidPollIdThrowsException() {
         UUID invalidPollId = UUID.randomUUID();
-        when(pollRepository.findById(invalidPollId)).thenReturn(Optional.empty());
+        when(pollRepository.findByIdForUpdate(invalidPollId)).thenReturn(Optional.empty());
         assertThrows(
                 ResourceNotFoundException.class,
                 () -> pollService.cancelPoll(invalidPollId)
@@ -245,7 +245,7 @@ class PollServiceTest {
         poll.setId(UUID.randomUUID());
         poll.setStatus(status);
 
-        when(pollRepository.findById(poll.getId())).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForUpdate(poll.getId())).thenReturn(Optional.of(poll));
         InvalidPollStateException ex = assertThrows(InvalidPollStateException.class,
                 () -> pollService.cancelPoll(poll.getId()));
         assertEquals("Only scheduled or active polls can be cancelled", ex.getMessage());
@@ -264,14 +264,14 @@ class PollServiceTest {
         poll.setTitle("Favorite programming language");
         poll.setStatus(status);
 
-        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForUpdate(pollId)).thenReturn(Optional.of(poll));
         CancelPollResponse response = pollService.cancelPoll(pollId);
 
         assertEquals(pollId, response.getPollId());
         assertEquals(Status.CANCELED, response.getStatus());
         assertNotNull(response.getCancelledAt());
         assertEquals("Favorite programming language", response.getTitle());
-        verify(pollRepository).findById(pollId);
+        verify(pollRepository).findByIdForUpdate(pollId);
     }
 
     private static Stream<Instant> invalidInstant() {

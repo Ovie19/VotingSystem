@@ -1,9 +1,6 @@
 package dev.fantasma.votingsystem.services;
 
-import dev.fantasma.votingsystem.data.models.Poll;
-import dev.fantasma.votingsystem.data.models.PollOption;
-import dev.fantasma.votingsystem.data.models.Status;
-import dev.fantasma.votingsystem.data.models.Vote;
+import dev.fantasma.votingsystem.data.models.*;
 import dev.fantasma.votingsystem.data.repositories.PollOptionRepository;
 import dev.fantasma.votingsystem.data.repositories.PollRepository;
 import dev.fantasma.votingsystem.data.repositories.VoteRepository;
@@ -52,7 +49,7 @@ class VoteServiceTest {
     @Test
     void invalidPollId_castVoteThrowsException() {
         UUID invalidPollId = UUID.randomUUID();
-        when(pollRepository.findById(invalidPollId)).thenReturn(Optional.empty());
+        when(pollRepository.findByIdForShare(invalidPollId)).thenReturn(Optional.empty());
 
         ResourceNotFoundException exception = assertThrows(
                 ResourceNotFoundException.class,
@@ -60,7 +57,7 @@ class VoteServiceTest {
         );
         assertEquals("Poll not found", exception.getMessage());
 
-        verify(pollRepository).findById(invalidPollId);
+        verify(pollRepository).findByIdForShare(invalidPollId);
         verifyNoInteractions(pollOptionRepository);
         verifyNoInteractions(voteRepository);
     }
@@ -68,7 +65,7 @@ class VoteServiceTest {
     @Test
     void pollStatusIsSCHEDULED_castVoteThrowsException() {
         Poll poll = buildPoll(Status.SCHEDULED);
-        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForShare(pollId)).thenReturn(Optional.of(poll));
 
         InvalidPollStateException exception = assertThrows(
                 InvalidPollStateException.class,
@@ -76,7 +73,7 @@ class VoteServiceTest {
         );
         assertEquals("This poll has not started yet", exception.getMessage());
 
-        verify(pollRepository).findById(pollId);
+        verify(pollRepository).findByIdForShare(pollId);
         verifyNoInteractions(pollOptionRepository);
         verifyNoInteractions(voteRepository);
     }
@@ -84,7 +81,7 @@ class VoteServiceTest {
     @Test
     void pollStatusIsCOMPLETED_castVoteThrowsException() {
         Poll poll = buildPoll(Status.COMPLETED);
-        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForShare(pollId)).thenReturn(Optional.of(poll));
 
         InvalidPollStateException exception = assertThrows(
                 InvalidPollStateException.class,
@@ -92,7 +89,7 @@ class VoteServiceTest {
         );
         assertEquals("This poll has ended", exception.getMessage());
 
-        verify(pollRepository).findById(pollId);
+        verify(pollRepository).findByIdForShare(pollId);
         verifyNoInteractions(pollOptionRepository);
         verifyNoInteractions(voteRepository);
     }
@@ -100,7 +97,7 @@ class VoteServiceTest {
     @Test
     void pollStatusIsCANCELED_castVoteThrowsException() {
         Poll poll = buildPoll(Status.CANCELED);
-        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForShare(pollId)).thenReturn(Optional.of(poll));
 
         InvalidPollStateException exception = assertThrows(
                 InvalidPollStateException.class,
@@ -108,7 +105,7 @@ class VoteServiceTest {
         );
         assertEquals("This poll has been canceled", exception.getMessage());
 
-        verify(pollRepository).findById(pollId);
+        verify(pollRepository).findByIdForShare(pollId);
         verifyNoInteractions(pollOptionRepository);
         verifyNoInteractions(voteRepository);
     }
@@ -116,7 +113,7 @@ class VoteServiceTest {
     @Test
     void invalidPollOptionId_castVoteThrowsException() {
         Poll poll = buildPoll(Status.ACTIVE);
-        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForShare(pollId)).thenReturn(Optional.of(poll));
         when(pollOptionRepository.findByIdAndPoll(pollOptionId, poll))
                 .thenReturn(Optional.empty());
 
@@ -126,7 +123,7 @@ class VoteServiceTest {
         );
         assertEquals("Poll option not found", exception.getMessage());
 
-        verify(pollRepository).findById(pollId);
+        verify(pollRepository).findByIdForShare(pollId);
         verify(pollOptionRepository).findByIdAndPoll(pollOptionId, poll);
         verifyNoInteractions(voteRepository);
     }
@@ -134,7 +131,7 @@ class VoteServiceTest {
     @Test
     void userHasAlreadyVoted_castVoteThrowsException() {
         Poll poll = buildPoll(Status.ACTIVE);
-        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForShare(pollId)).thenReturn(Optional.of(poll));
         when(pollOptionRepository.findByIdAndPoll(pollOptionId, poll))
                 .thenReturn(Optional.of(new PollOption()));
         when(voteRepository.existsByUserIdAndPollId(userId, pollId)).thenReturn(true);
@@ -145,7 +142,7 @@ class VoteServiceTest {
         );
         assertEquals("You have already voted", exception.getMessage());
 
-        verify(pollRepository).findById(pollId);
+        verify(pollRepository).findByIdForShare(pollId);
         verify(pollOptionRepository).findByIdAndPoll(pollOptionId, poll);
         verify(voteRepository).existsByUserIdAndPollId(userId, pollId);
         verify(voteRepository, never()).saveAndFlush(any(Vote.class));
@@ -156,11 +153,12 @@ class VoteServiceTest {
     void duplicateVote_databaseConstraintViolation_throwsAlreadyVotedException() {
         Poll poll = buildPoll(Status.ACTIVE);
 
-        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForShare(pollId)).thenReturn(Optional.of(poll));
         when(pollOptionRepository.findByIdAndPoll(pollOptionId, poll)).thenReturn(Optional.of(new PollOption()));
         when(voteRepository.existsByUserIdAndPollId(userId, pollId)).thenReturn(false);
         when(voteRepository.saveAndFlush(any(Vote.class)))
                 .thenThrow(new DataIntegrityViolationException("duplicate key"));
+        when(entityManager.find(User.class, userId)).thenReturn(new User());
 
         AlreadyVotedException exception = assertThrows(
                 AlreadyVotedException.class,
@@ -168,7 +166,7 @@ class VoteServiceTest {
         );
         assertEquals("You have already voted", exception.getMessage());
 
-        verify(pollRepository).findById(pollId);
+        verify(pollRepository).findByIdForShare(pollId);
         verify(pollOptionRepository).findByIdAndPoll(pollOptionId, poll);
         verify(voteRepository).existsByUserIdAndPollId(userId, pollId);
         verify(voteRepository).saveAndFlush(any(Vote.class));
@@ -179,7 +177,7 @@ class VoteServiceTest {
         Poll poll = buildPoll(Status.ACTIVE);
         poll.setEndAt(Instant.now().minusMillis(10000));
 
-        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForShare(pollId)).thenReturn(Optional.of(poll));
         when(pollOptionRepository.findByIdAndPoll(pollOptionId, poll))
                 .thenReturn(Optional.of(new PollOption()));
         when(voteRepository.existsByUserIdAndPollId(userId, pollId)).thenReturn(false);
@@ -194,17 +192,18 @@ class VoteServiceTest {
     @Test
     void castVoteSuccessfullyTest() throws VotingSystemException {
         Poll poll = buildPoll(Status.ACTIVE);
-        when(pollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        when(pollRepository.findByIdForShare(pollId)).thenReturn(Optional.of(poll));
         when(pollOptionRepository.findByIdAndPoll(pollOptionId, poll)).thenReturn(Optional.of(new PollOption()));
         when(voteRepository.existsByUserIdAndPollId(userId, pollId)).thenReturn(false);
         when(voteRepository.saveAndFlush(any(Vote.class))).thenAnswer(i -> i.getArgument(0));
+        when(entityManager.find(User.class, userId)).thenReturn(new User());
 
         VoteResponse response = votingService.castVote(pollId, pollOptionId, userId);
 
         assertNotNull(response);
         assertEquals(pollId, response.getPollId());
 
-        verify(pollRepository).findById(pollId);
+        verify(pollRepository).findByIdForShare(pollId);
         verify(pollOptionRepository).findByIdAndPoll(pollOptionId, poll);
         verify(voteRepository).existsByUserIdAndPollId(userId, pollId);
         verify(voteRepository).saveAndFlush(any(Vote.class));
