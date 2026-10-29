@@ -21,7 +21,7 @@ import static dev.fantasma.votingsystem.utils.Validator.validatePollEndAt;
 
 @Service
 @AllArgsConstructor
-public class VotingServiceImpl implements VoteService {
+public class VoteServiceImpl implements VoteService {
 
     private final VoteRepository voteRepository;
     private final PollRepository pollRepository;

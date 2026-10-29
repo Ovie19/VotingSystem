@@ -40,7 +40,7 @@ class VoteServiceTest {
     @Mock
     private EntityManager entityManager;
     @InjectMocks
-    private VotingServiceImpl votingService;
+    private VoteServiceImpl votingService;
 
     private final UUID userId = UUID.randomUUID();
     private final UUID pollId = UUID.randomUUID();
